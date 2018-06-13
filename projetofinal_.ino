@@ -1,4 +1,11 @@
 #include <DHT.h>
+#include <ESP8266WiFi.h>
+
+String apiKey = "544RO609IAMS6H32"; //  seu Write API key do site ThingSpeak
+const char *ssid = "Wifi"; //  substitua com o ssid e senha da rede Wifi
+const char *pass = "R%d4F>09Z<-W";
+const char* server = "api.thingspeak.com";
+WiFiClient client;
 
 // defines pins numbers
 
@@ -16,7 +23,19 @@ long duration; //sensor de distância
 int distance; //sensor de distância
 
 void setup() {
+  //Definições da conexão sem fio
+  Serial.println("Connecting to ");
+  Serial.println(ssid);
+  WiFi.begin(ssid, pass);
+  while (WiFi.status() != WL_CONNECTED)
+    {
+    delay(500);
+    Serial.print(".");
+    }
+  Serial.println("");
+  Serial.println("WiFi connected");
 
+  //Definição dos pinos do sensor de disTância
   pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output //Sensor de distância
   pinMode(echoPin, INPUT); // Sets the echoPin as an Input //Sensor de distância
   Serial.begin(9600); // Starts the serial communication //Sensor de distância
@@ -87,5 +106,38 @@ void loop() {
   }
   // Termina a parte do humidade temperatura
 
+  // Começa a parte que transmite pro thingspeak
+      if (client.connect(server,80)) // "184.106.153.149" or api.thingspeak.com
+    {
+        String postStr = apiKey;
+        postStr +="&field1="; // atenção, esse é o campo 1 que você escolheu no canal do ThingSpeak Temperatura
+        postStr += String(t);
+        postStr +="&field2=";
+        postStr += String(h);
+        postStr +="&field3=";
+        postStr += String(voltage);
+        postStr +="&field4=";
+        postStr += String(distance);
+        postStr += "\r\n\r\n";
+        client.print("POST /update HTTP/1.1\n");
+        client.print("Host: api.thingspeak.com\n");
+        client.print("Connection: close\n");
+        client.print("X-THINGSPEAKAPIKEY: "+apiKey+"\n");
+        client.print("Content-Type: application/x-www-form-urlencoded\n");
+        client.print("Content-Length: ");
+        client.print(postStr.length());
+        client.print("\n\n");
+        client.print(postStr);
+        Serial.print("Temperature: ");
+        Serial.print(t);
+        Serial.print(" degrees Celcius, Humidity: ");
+        Serial.print(h);
+        Serial.println("%. Send to Thingspeak.");
+        }
+        client.stop();
+        Serial.println("Waiting...");
+        // thingspeak needs minimum 15 sec delay between updates, i've set it to 20 seconds
+        delay(20000);
+  }
 
-}
+
